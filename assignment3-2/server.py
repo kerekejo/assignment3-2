@@ -32,6 +32,15 @@ def generatekbits(k):
         num |= 1
         if is_prime(num):
             return num
+        
+def decrypt(ciphertext, d, n):
+    plaintext = ''
+    ciphertext = ciphertext.split()
+    for letter in ciphertext:
+        letter = int(letter)
+        letter = pow(letter, d, n)
+        plaintext += chr(letter)
+    return plaintext
 
 def server_program():
     
@@ -56,9 +65,24 @@ def server_program():
             if k <= 0:
                 break
             else:
-                rand_prime = generatekbits(k)
+                p = generatekbits(k)
+                q = generatekbits(k)
+                n = p * q
+                phi = (p - 1) * (q - 1)
+                e = 17
+                d = pow(e, -1, phi)
+                conn.send(f"N: {n}, e: {e}".encode())
+                conn.send("Enter message: ".encode())
+                encryptedMessage = conn.recv(1024).decode()
+                print(f"Received message: {encryptedMessage}")
+                print(decrypt(encryptedMessage, d, n))
+
+                
+                
         except ValueError:
             break
+        
+        
         
         
         if not data:

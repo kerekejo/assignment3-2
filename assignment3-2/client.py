@@ -1,5 +1,12 @@
 import socket
 
+def encrypt(message, e, n):
+    ciphertext = ''
+    for letter in message:
+        letter = ord(letter)
+        letter = pow(letter, e, n)
+        ciphertext += str(letter) + ' '
+    return ciphertext
 
 def client_program():
     host = socket.gethostname() 
@@ -13,8 +20,17 @@ def client_program():
     while message.lower().strip() != 'bye': 
         data = client_socket.recv(1024).decode()  
         print(data)
-        message = input(" -> ")
-        client_socket.send(message.encode())
+        if data == "Enter message: ":
+            message = input()
+            e = int(input("Enter e: "))
+            n = int(input("Enter n: "))
+            message = encrypt(message, e, n)
+            client_socket.send(str(message).encode())
+        elif data[0:2] != "N:":
+            message = input("-> ")
+            client_socket.send(message.encode())
+        
+
 
 
     client_socket.close() 
