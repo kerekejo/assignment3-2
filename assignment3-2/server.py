@@ -1,5 +1,6 @@
 import socket
 import random
+from Crypto.Cipher import AES
 
 def is_prime(n, k=5):
     if n <= 1:
@@ -8,7 +9,6 @@ def is_prime(n, k=5):
         return True
     if n % 2 == 0:
         return False
-
     r, s = 0, n - 1
     while s % 2 == 0:
         r += 1
@@ -32,64 +32,62 @@ def generatekbits(k):
         num |= 1
         if is_prime(num):
             return num
-        
-def decrypt(ciphertext, d, n):
-    plaintext = ''
-    ciphertext = ciphertext.split()
-    for letter in ciphertext:
-        letter = int(letter)
-        letter = pow(letter, d, n)
-        plaintext += chr(letter)
-    return plaintext
+
+def rsa_decrypt(ciphertext, d, n):
+    decrypted = ''
+    numbers = ciphertext.strip().split()
+    for num in numbers:
+        decrypted += chr(pow(int(num), d, n))
+    return decrypted
 
 def server_program():
-    
     host = socket.gethostname()
     port = 1044
 
-    server_socket = socket.socket()  # get instance
-    server_socket.bind((host, port)) 
-
+    server_socket = socket.socket()
+    server_socket.bind((host, port))
     server_socket.listen(2)
-    conn, address = server_socket.accept()  
-    print("Connection from: " + str(address))
-    #data = "Hello, Client!"
-    #conn.send(data.encode()) 
+    conn, address = server_socket.accept()
+    print("Connection from:", address)
 
     while True:
-        message = "Enter k-bits: "
-        conn.send(message.encode())
+        conn.send(b"Enter k-bits: ")
         data = conn.recv(1024).decode()
+        if not data:
+            break
+
         try:
             k = int(data)
             if k <= 0:
                 break
-            else:
-                p = generatekbits(k)
-                q = generatekbits(k)
-                n = p * q
-                phi = (p - 1) * (q - 1)
-                e = 17
-                d = pow(e, -1, phi)
-                conn.send(f"N: {n}, e: {e}".encode())
-                conn.send("Enter message: ".encode())
-                encryptedMessage = conn.recv(1024).decode()
-                print(f"Received message: {encryptedMessage}")
-                print(decrypt(encryptedMessage, d, n))
-
-                
-                
         except ValueError:
             break
-        
-        
-        
-        
-        if not data:
-            break
-        
-         
 
+        p = generatekbits(k)
+        q = generatekbits(k)
+        n = p * q
+        phi = (p - 1) * (q - 1)
+        e = 17
+        d = pow(e, -1, phi)
 
-    conn.close() 
+        conn.send(f"{n},{e}".encode()) 
+
+        conn.send(b"Enter message: ")
+        encrypted_data = conn.recv(2048)
+        tag = conn.recv(16)
+        nonce = conn.recv(16)
+
+        print("Received encrypted data:", encrypted_data)
+        print("Received tag:", tag)
+        print("Received nonce:", nonce)
+
+        key = b'Sixteen byte key'
+        cipher = AES.new(key, AES.MODE_EAX, nonce=nonce)
+        decrypted = cipher.decrypt_and_verify(encrypted_data, tag)
+
+        rsa_decrypted = rsa_decrypt(decrypted.decode(), d, n)
+        print("Decrypted message:", rsa_decrypted)
+
+    conn.close()
+
 server_program()
